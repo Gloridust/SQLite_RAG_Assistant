@@ -6,7 +6,7 @@ import json
 import re
 
 from config import openai_api_base, openai_api_key
-from prompt import generate_img_prompt,generate_data_propmt
+from prompt import generate_img_prompt,generate_data_prompt
 
 
 client = OpenAI(
@@ -41,9 +41,9 @@ def generate_img(img_url):
         
         print(">>>Sending request to OpenAI API...")
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=messages,
-            max_tokens=1024,
+            max_tokens=2048,
         )
         
         result = response.choices[0].message.content
@@ -51,24 +51,24 @@ def generate_img(img_url):
         print(result)
         return result
     
-    except Exception as e:
+    except Exception as e:  
         error_message = f">>>Error processing image: {str(e)}<<<"
         print(error_message)
         return error_message
 
 def generate_data(result_sum):
-    prompt = generate_data_propmt
+    prompt = generate_data_prompt
 
     try:
         print(">>>Generating structured data from summary...")
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that extracts structured json data from text."},
                 {"role": "user", "content": prompt + result_sum}
             ],
             temperature=0.3,
-            max_tokens=1024
+            max_tokens=2048
         )
 
         raw_response = response.choices[0].message.content.strip()
@@ -102,7 +102,16 @@ def generate_data(result_sum):
         return {"error": error_message}
 
 if __name__ == "__main__":
-    img_url = "./demo_src/airticketgloo.jpg"
+    img_url = input(">>>Drop img here:").strip().strip("'\"")
+    print(f"Final image path: {img_url}")
+    
+    try:
+        with Image.open(img_url) as img:
+            img.show()
+    except Exception as e:
+        print(f"Error processing image at path: {img_url}")
+        print(f"Error details: {e}")
+
     print(">>>Starting process...")
     result_sum = generate_img(img_url)
     print(">>>Generating structured data...")
