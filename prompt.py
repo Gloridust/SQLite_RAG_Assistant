@@ -27,7 +27,7 @@ generate_data_prompt="""
     }
 
     Ensure that:
-    - "type" is content type. Possible values: ORDER(flight ticket, train ticket, restaurant order, etc), PURCHASE_RECEIPT, CONTENT(twitter post, web article, book, etc); 
+    - "type" is content type. Possible values: ticket(include: flight ticket, train ticket, etc), receipt, content(include: post, web article, book, etc); 
     - "item" is the related item, such as item purchased, the name of the event, etc;
     - "location" is the location and detailed address when the event started;
     - "location_start" is the beginning location of a trip;
