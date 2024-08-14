@@ -4,15 +4,31 @@ import io
 from openai import OpenAI
 import json
 import re
+# from pydantic import BaseModel, ValidationError
 
 from config import openai_api_base, openai_api_key
-from prompt import generate_img_prompt,generate_data_prompt
+from prompt import generate_img_prompt,generate_data_prompt,generate_json_from_image_prompt
 
 
 client = OpenAI(
     api_key=openai_api_key,
     base_url=openai_api_base
 )
+
+# class ExtractedData(BaseModel):
+#     type: str | None
+#     item: str | None
+#     location: str | None
+#     location_start: str | None
+#     location_end: str | None
+#     date: str | None
+#     time: str | None
+#     people: list[str] | None
+#     serial_number: str | None
+#     status: str | None
+#     total_amount: float | None
+#     currency_type: str | None
+#     additional_info: str | None
 
 def encode_image_to_base64(image):
     buffered = io.BytesIO()
