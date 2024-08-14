@@ -18,7 +18,7 @@ def setup_database():
     cursor.execute('''
     CREATE TABLE content (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        added_time TEXT NOT NULL,
+        added_time TEXT,
         type TEXT,
         item TEXT,
         location TEXT,
@@ -31,7 +31,7 @@ def setup_database():
         status TEXT,
         total_amount REAL,
         currency_type TEXT,
-        NER TEXT NOT NULL,
+        NER TEXT,
         additional_info TEXT
     )
     ''')
