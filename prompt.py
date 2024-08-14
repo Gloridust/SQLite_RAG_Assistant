@@ -22,6 +22,7 @@ generate_data_prompt="""
         "status": string or null,
         "total_amount": number or null,
         "currency_type": string or null,
+        "NER": string,
         "additional_info": string or null
     }
 
@@ -37,6 +38,7 @@ generate_data_prompt="""
     - "serial_number" is the relevant number, which can be an order number, track number, etc;
     - "status" is the status of this event, you can ONLY fill "finished" or "unfinished";
     - "additional_info" includes any other relevant details, such as seat number, flight number, etc.
+    - "NER" is the related entities;
     - Do not nest structures without authorization;
 
     If any information is not available or cannot be determined, use null for that field.

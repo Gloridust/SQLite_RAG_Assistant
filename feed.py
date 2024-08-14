@@ -4,6 +4,7 @@ import io
 from openai import OpenAI
 import json
 import re
+from ltp import LTP,StnSplit
 # from pydantic import BaseModel, ValidationError
 
 from config import openai_api_base, openai_api_key
@@ -88,8 +89,8 @@ def generate_data(result_sum):
         )
 
         raw_response = response.choices[0].message.content.strip()
-        print(">>>Raw output from GPT:")
-        print(raw_response)
+        # print(">>>Raw output from GPT:")
+        # print(raw_response)
 
         # 使用正则表达式提取 JSON 部分
         json_match = re.search(r'\{[\s\S]*\}', raw_response)
@@ -117,19 +118,42 @@ def generate_data(result_sum):
         print(f">>>Error in generate_data: {error_message}")
         return {"error": error_message}
 
+def NER(text):
+    # 初始化LTP模型
+    ltp = LTP()
+    
+    # 使用StnSplit进行分句
+    stn_split = StnSplit()
+    sentences = stn_split.split(text)
+    
+    # 对整个文本进行处理
+    result = ltp.pipeline(sentences, tasks=["cws", "pos", "ner"])
+    
+    # 提取所有命名实体，只保留实体名称
+    entities = []
+    for sentence_ner in result.ner:
+        for entity in sentence_ner:
+            _, entity_name, _, _ = entity
+            entities.append(entity_name)
+    
+    print(">>>entities:", entities)
+    return entities
+
+
 if __name__ == "__main__":
     img_url = input(">>>Drop img here:").strip().strip("'\"")
     print(f"Final image path: {img_url}")
     
-    try:
-        with Image.open(img_url) as img:
-            img.show()
-    except Exception as e:
-        print(f"Error processing image at path: {img_url}")
-        print(f"Error details: {e}")
+    # try:
+    #     with Image.open(img_url) as img:
+    #         img.show()
+    # except Exception as e:
+    #     print(f"Error processing image at path: {img_url}")
+    #     print(f"Error details: {e}")
 
     print(">>>Starting process...")
     result_sum = generate_img(img_url)
+    result_sum = result_sum + "NER:" + str(NER(result_sum))
     print(">>>Generating structured data...")
     result_data = generate_data(result_sum)
     print(">>>result:")
