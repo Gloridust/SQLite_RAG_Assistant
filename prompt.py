@@ -1,49 +1,56 @@
-generate_img_prompt='''
-    Extract key information that may be contained in the main interface of the image, maybe including but not limited to: Critical time, location, people, summary, order, ticket, or purchase, etc. 
-    Provide a summary, focusing on: type of the event, person related, serial number, status (if finished), total amount and currency, date and time,location (destination for travel, delivery address for shopping, etc.),and any other crucial information. 
-    Summarize these details concisely, highlighting the relevant information for each category.
-    '''
+generate_img_prompt = '''
+Analyze the main interface of the image and extract key information, including but not limited to:
+1. Event type (e.g., ticket, receipt, content)
+2. Related individuals
+3. Identification numbers (e.g., serial number, order number)
+4. Status (if applicable)
+5. Financial details (total amount and currency)
+6. Temporal information (date and time)
+7. Spatial information (location, destination, address)
+8. Any other crucial details
+
+Provide a concise summary highlighting the relevant information for each category. Focus on accuracy and brevity in your description.
+'''
 
 generate_data_prompt="""
-    Based on the following summary, extract and structure the information into a JSON format that matches our database schema. 
-    Fill in as much useful information as possible in the corresponding places Directly and succinctly. If any field is not applicable or the information is not available, use null. 
-    Output in the following JSON structure, without any additional text.
+Extract and structure the information from the provided summary into a JSON format matching our database schema. Fill in all applicable fields directly and concisely. Use null for unavailable or inapplicable information.
 
-    {
-        "type": string or null,
-        "item": string or null,
-        "location": string or null,
-        "location_start": string or null,
-        "location_end": string or null,
-        "date": string or null,
-        "time": string or null,
-        "people": list or null,
-        "serial_number": string or null,
-        "status": string or null,
-        "total_amount": number or null,
-        "currency_type": string or null,
-        "NER": string,
-        "additional_info": string or null
-    }
+Output the following JSON structure without any additional text:
 
-    Ensure that:
-    - "type" is content type. Possible values: ticket(include: flight ticket, train ticket, etc), receipt, content(include: post, web article, book, etc); 
-    - "item" is the related item, such as item purchased, the name of the event, etc;
-    - "location" is the location and detailed address when the event started;
-    - "location_start" is the beginning location of a trip;
-    - "location_end" is the end location of a trip;
-    - "currency_type" is three letters of currency such as CNY, USD, JPY;
-    - "date" is in ISO 8601 format (YYYY-MM-DD), and "time" is HH:MM;
-    - "people" is the people's name related;
-    - "serial_number" is the relevant number, which can be an order number, track number, etc;
-    - "status" is the status of this event, you can ONLY fill "finished" or "unfinished";
-    - "additional_info" includes any other relevant details, such as seat number, flight number, etc.
-    - "NER" is the related entities;
-    - Do not nest structures without authorization;
+{
+    "type": string or null,
+    "item": string or null,
+    "location": string or null,
+    "location_start": string or null,
+    "location_end": string or null,
+    "date": string or null,
+    "time": string or null,
+    "people": list or null,
+    "serial_number": string or null,
+    "status": string or null,
+    "total_amount": number or null,
+    "currency_type": string or null,
+    "NER": string,
+    "additional_info": string or null
+}
 
-    If any information is not available or cannot be determined, use null for that field.
+Guidelines:
+- "type": Use "ticket" (including flight, train tickets), "receipt", or "content" (for posts, articles, books)
+- "item": Specify the purchased item, event name, etc.
+- "location": Provide the event's starting location and detailed address
+- "location_start" and "location_end": Use for trip start and end locations
+- "currency_type": Use three-letter codes (e.g., CNY, USD, JPY)
+- "date": Format as YYYY-MM-DD
+- "time": Format as HH:MM
+- "people": List related individuals' names
+- "serial_number": Include order numbers, tracking numbers, etc.
+- "status": Use ONLY "finished" or "unfinished"
+- "additional_info": Include other relevant details (e.g., seat number, flight number)
+- "NER": List related named entities
 
-    Summary to analyze:
+Do not nest structures without authorization. Use null for any unavailable information.
+
+Summary to analyze:
     """
 
 generate_json_from_image_prompt = '''
