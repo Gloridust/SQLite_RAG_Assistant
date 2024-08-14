@@ -217,3 +217,4 @@ if __name__ == "__main__":
     result_data = generate_data(result_sum)
     print(">>>result:")
     print(json.dumps(result_data, indent=2, ensure_ascii=False))
+    setup_database()
