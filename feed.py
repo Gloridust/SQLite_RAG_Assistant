@@ -79,8 +79,8 @@ def generate_data(result_sum):
         json_match = re.search(r'\{[\s\S]*\}', raw_response)
         if json_match:
             json_str = json_match.group()
-            print(">>>Extracted JSON string:")
-            print(json_str)
+            # print(">>>Extracted JSON string:")
+            # print(json_str)
             try:
                 # 预处理 JSON 字符串
                 json_str = re.sub(r'\s+', ' ', json_str)  # 将多个空白字符替换为单个空格
