@@ -19,21 +19,6 @@ client = OpenAI(
     base_url=openai_api_base
 )
 
-# class ExtractedData(BaseModel):
-#     type: str | None
-#     item: str | None
-#     location: str | None
-#     location_start: str | None
-#     location_end: str | None
-#     date: str | None
-#     time: str | None
-#     people: list[str] | None
-#     serial_number: str | None
-#     status: str | None
-#     total_amount: float | None
-#     currency_type: str | None
-#     additional_info: str | None
-
 def encode_image_to_base64(image):
     buffered = io.BytesIO()
     image.save(buffered, format=image.format)
@@ -198,19 +183,11 @@ def setup_database():
     conn.commit()
     conn.close()
     
-    print(f"Database {db_file} created successfully with required tables and data.")
+    print(f">>>Database {db_file} created successfully with required tables and data.")
 
 if __name__ == "__main__":
     img_url = input(">>>Drop img here:").strip().strip("'\"")
     print(f"Final image path: {img_url}")
-    
-    # try:
-    #     with Image.open(img_url) as img:
-    #         img.show()
-    # except Exception as e:
-    #     print(f"Error processing image at path: {img_url}")
-    #     print(f"Error details: {e}")
-
     print(">>>Starting process...")
     result_sum = generate_img(img_url)
     result_sum = result_sum + "NER:" + str(NER(result_sum))
