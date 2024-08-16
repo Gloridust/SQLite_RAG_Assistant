@@ -188,8 +188,9 @@ def setup_database():
 def save_to_database(data):
     db_file = 'UserData.db'
     
-    # 连接到数据库
+    # 连接到数据库，并设置 text_factory
     conn = sqlite3.connect(db_file)
+    conn.text_factory = str  # 这将确保文本以 UTF-8 格式存储
     cursor = conn.cursor()
     
     try:
@@ -197,7 +198,10 @@ def save_to_database(data):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         # 处理 people 列表
-        people = json.dumps(data.get('people', [])) if isinstance(data.get('people'), list) else data.get('people')
+        if isinstance(data.get('people'), list):
+            people = json.dumps(data['people'], ensure_ascii=False)
+        else:
+            people = data.get('people')
         
         # 准备 SQL 语句
         sql = '''
@@ -223,7 +227,7 @@ def save_to_database(data):
             data.get('status'),
             data.get('total_amount'),
             data.get('currency_type'),
-            data.get('NER'),
+            json.dumps(data.get('NER', []), ensure_ascii=False),  # 确保 NER 也正确编码
             data.get('additional_info')
         )
         
