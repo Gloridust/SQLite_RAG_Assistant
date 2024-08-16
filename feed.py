@@ -84,10 +84,11 @@ def generate_data(result_sum):
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that extracts structured json data from text."},
-                {"role": "user", "content": prompt + result_sum}
+                {"role": "system", "content": f"You are a helpful assistant that extracts structured json data from text.{prompt}"},
+                {"role": "user", "content": result_sum}
             ],
-            temperature=0.3,
+            temperature=0.2,
+            response_format={"type":"json_object"},
             max_tokens=2048
         )
 
