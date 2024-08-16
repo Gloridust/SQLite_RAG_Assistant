@@ -185,6 +185,64 @@ def setup_database():
     
     print(f">>>Database {db_file} created successfully with required tables and data.")
 
+def save_to_database(data):
+    db_file = 'UserData.db'
+    
+    # 连接到数据库
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+    
+    try:
+        # 准备插入数据
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # 处理 people 列表
+        people = json.dumps(data.get('people', [])) if isinstance(data.get('people'), list) else data.get('people')
+        
+        # 准备 SQL 语句
+        sql = '''
+        INSERT INTO content (
+            added_time, type, item, location, location_start, location_end,
+            date, time, people, serial_number, status, total_amount,
+            currency_type, NER, additional_info
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        '''
+        
+        # 准备数据元组
+        values = (
+            current_time,
+            data.get('type'),
+            data.get('item'),
+            data.get('location'),
+            data.get('location_start'),
+            data.get('location_end'),
+            data.get('date'),
+            data.get('time'),
+            people,
+            data.get('serial_number'),
+            data.get('status'),
+            data.get('total_amount'),
+            data.get('currency_type'),
+            data.get('NER'),
+            data.get('additional_info')
+        )
+        
+        # 执行插入操作
+        cursor.execute(sql, values)
+        
+        # 提交事务
+        conn.commit()
+        print(">>>Data successfully saved to database.")
+    
+    except Exception as e:
+        print(f">>>Error saving data to database: {str(e)}")
+        conn.rollback()
+    
+    finally:
+        # 关闭连接
+        conn.close()
+
+
 if __name__ == "__main__":
     img_url = input(">>>Drop img here:").strip().strip("'\"")
     print(f"Final image path: {img_url}")
@@ -196,3 +254,4 @@ if __name__ == "__main__":
     print(">>>result:")
     print(json.dumps(result_data, indent=2, ensure_ascii=False))
     setup_database()
+    save_to_database(result_data)
