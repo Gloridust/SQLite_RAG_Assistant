@@ -46,7 +46,7 @@ def generate_img(img_url):
         
         print(">>>Sending request to OpenAI API...")
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=messages,
             max_tokens=2048,
         )
@@ -245,7 +245,6 @@ def save_to_database(data):
     finally:
         # 关闭连接
         conn.close()
-
 
 if __name__ == "__main__":
     img_url = input(">>>Drop img here:").strip().strip("'\"")
