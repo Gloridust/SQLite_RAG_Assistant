@@ -36,7 +36,7 @@ Output the following JSON structure without any additional text:
 
 Guidelines:
 - "type": Use "ticket" (including flight, train tickets), "receipt", or "content" (for posts, articles, books)
-- "item": Specify the purchased item, event name, etc.
+- "item": Provide a single, concise word or short phrase that best describes the content (e.g., "report", "invoice", "article", "book"). Avoid long descriptions.
 - "location": Provide the event's starting location and detailed address
 - "location_start" and "location_end": Use for trip start and end locations
 - "currency_type": Use three-letter codes (e.g., CNY, USD, JPY)
@@ -45,16 +45,16 @@ Guidelines:
 - "people": List related individuals' names
 - "serial_number": Include order numbers, tracking numbers, etc.
 - "status": Use ONLY "finished" or "unfinished"
-- "additional_info": Include other relevant details (e.g., seat number, flight number)
+- "additional_info": Include other relevant details (e.g., seat number, flight number, or a brief description of the content)
 - "NER": List related named entities
 
 Do not nest structures without authorization. Use null for any unavailable information.
 
 Summary to analyze:
-    """
+"""
 
 generate_json_from_image_prompt = '''
-    Extract key information that may be contained in the main interface of the image, maybe including but not limited to: time, location, people, summary, order, ticket, or purchase, etc. 
-    Provide a summary, focusing on: type of the event, person related, serial number, finished (true/false), total amount and currency, date and time,location (destination for travel, delivery address for shopping, etc.),and any other crucial information. 
-    Summarize these details concisely, out put json.
-    '''
+Extract key information that may be contained in the main interface of the image, maybe including but not limited to: time, location, people, summary, order, ticket, or purchase, etc. 
+Provide a summary, focusing on: type of the event, person related, serial number, finished (true/false), total amount and currency, date and time, location (destination for travel, delivery address for shopping, etc.), and any other crucial information. 
+Summarize these details concisely, output json.
+'''
