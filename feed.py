@@ -4,15 +4,13 @@ import io
 from openai import OpenAI
 import json
 import re
-from ltp import LTP,StnSplit
-# from pydantic import BaseModel, ValidationError
+from ltp import LTP, StnSplit
 import sqlite3
 import os
 from datetime import datetime
 
 from config import openai_api_base, openai_api_key
-from prompt import generate_img_prompt,generate_data_prompt,generate_json_from_image_prompt
-
+from prompt import generate_img_prompt, generate_data_prompt, generate_json_from_image_prompt
 
 client = OpenAI(
     api_key=openai_api_key,
@@ -24,12 +22,15 @@ def get_types_from_db():
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
     
-    cursor.execute('SELECT supersets, subsets FROM type')
-    types = cursor.fetchall()
-    
-    conn.close()
-    
-    return {supersets: subsets.split(', ') if subsets else [] for supersets, subsets in types}
+    try:
+        cursor.execute('SELECT supersets, subsets FROM type')
+        types = cursor.fetchall()
+        return {supersets: subsets.split(', ') if subsets else [] for supersets, subsets in types}
+    except sqlite3.OperationalError:
+        print("Warning: 'type' table not found. Returning default types.")
+        return {"ticket": [], "receipt": [], "content": []}
+    finally:
+        conn.close()
 
 def encode_image_to_base64(image):
     buffered = io.BytesIO()
@@ -102,19 +103,12 @@ def generate_data(result_sum):
         )
 
         raw_response = response.choices[0].message.content.strip()
-        # print(">>>Raw output from GPT:")
-        # print(raw_response)
-
-        # 使用正则表达式提取 JSON 部分
         json_match = re.search(r'\{[\s\S]*\}', raw_response)
         if json_match:
             json_str = json_match.group()
-            # print(">>>Extracted JSON string:")
-            # print(json_str)
             try:
-                # 预处理 JSON 字符串
-                json_str = re.sub(r'\s+', ' ', json_str)  # 将多个空白字符替换为单个空格
-                json_str = json_str.replace('\n', ' ')    # 移除换行符
+                json_str = re.sub(r'\s+', ' ', json_str)
+                json_str = json_str.replace('\n', ' ')
                 data = json.loads(json_str)
                 print(">>>Parsed JSON data:")
                 print(json.dumps(data, indent=2, ensure_ascii=False))
@@ -132,17 +126,11 @@ def generate_data(result_sum):
         return {"error": error_message}
 
 def NER(text):
-    # 初始化LTP模型
     ltp = LTP()
-    
-    # 使用StnSplit进行分句
     stn_split = StnSplit()
     sentences = stn_split.split(text)
-    
-    # 对整个文本进行处理
     result = ltp.pipeline(sentences, tasks=["cws", "pos", "ner"])
     
-    # 提取所有命名实体，只保留实体名称
     entities = []
     for sentence_ner in result.ner:
         for entity in sentence_ner:
@@ -155,18 +143,11 @@ def NER(text):
 def setup_database():
     db_file = 'UserData.db'
     
-    # 检查数据库文件是否存在
-    if os.path.exists(db_file):
-        print(f"Database {db_file} already exists.")
-        return
-    
-    # 创建新的数据库连接
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
     
-    # 创建 content 表
     cursor.execute('''
-    CREATE TABLE content (
+    CREATE TABLE IF NOT EXISTS content (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         added_time TEXT NOT NULL,
         type TEXT,
@@ -186,28 +167,27 @@ def setup_database():
     )
     ''')
     
-    # 创建 type 表
     cursor.execute('''
-    CREATE TABLE type (
+    CREATE TABLE IF NOT EXISTS type (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         supersets TEXT NOT NULL,
         subsets TEXT
     )
     ''')
     
-    # 插入基础 type 表的数据
-    type_data = [
-        ('ticket', 'flight ticket, train ticket'),
-        ('receipt', 'invoice'),
-        ('content', 'post, web article, book')
-    ]
-    cursor.executemany('INSERT INTO type (supersets, subsets) VALUES (?, ?)', type_data)
+    cursor.execute('SELECT COUNT(*) FROM type')
+    if cursor.fetchone()[0] == 0:
+        type_data = [
+            ('ticket', 'flight ticket, train ticket'),
+            ('receipt', 'invoice'),
+            ('content', 'post, web article, book')
+        ]
+        cursor.executemany('INSERT INTO type (supersets, subsets) VALUES (?, ?)', type_data)
     
-    # 提交更改并关闭连接
     conn.commit()
     conn.close()
     
-    print(f">>>Database {db_file} created successfully with required tables and data.")
+    print(f">>>Database {db_file} setup completed.")
 
 def save_to_database(data):
     db_file = 'UserData.db'
@@ -217,16 +197,13 @@ def save_to_database(data):
     cursor = conn.cursor()
     
     try:
-        # 准备插入数据
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # 处理 people 列表
         if isinstance(data.get('people'), list):
             people = json.dumps(data['people'], ensure_ascii=False)
         else:
             people = data.get('people')
         
-        # 准备 SQL 语句
         sql = '''
         INSERT INTO content (
             added_time, type, item, location, location_start, location_end,
@@ -235,7 +212,6 @@ def save_to_database(data):
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         '''
         
-        # 准备数据元组
         values = (
             current_time,
             data.get('type'),
@@ -254,19 +230,15 @@ def save_to_database(data):
             data.get('additional_info')
         )
         
-        # 执行插入操作
         cursor.execute(sql, values)
         
-        # 处理类型的自完善
         content_type = data.get('type')
         item = data.get('item')
         if content_type and item:
-            # 检查类型是否已存在
             cursor.execute('SELECT supersets, subsets FROM type WHERE supersets = ?', (content_type,))
             existing_type = cursor.fetchone()
             
             if existing_type:
-                # 类型已存在，更新 subsets
                 _, subsets = existing_type
                 if subsets:
                     subset_list = [s.strip() for s in subsets.split(',')]
@@ -274,16 +246,14 @@ def save_to_database(data):
                         subset_list.append(item)
                         new_subsets = ', '.join(subset_list)
                     else:
-                        new_subsets = subsets  # 无需更新
+                        new_subsets = subsets
                 else:
                     new_subsets = item
                 
                 cursor.execute('UPDATE type SET subsets = ? WHERE supersets = ?', (new_subsets, content_type))
             else:
-                # 新类型，插入它
                 cursor.execute('INSERT INTO type (supersets, subsets) VALUES (?, ?)', (content_type, item))
         
-        # 提交事务
         conn.commit()
         print(">>>Data successfully saved to database and type table updated if necessary.")
     
@@ -292,10 +262,11 @@ def save_to_database(data):
         conn.rollback()
     
     finally:
-        # 关闭连接
         conn.close()
 
 if __name__ == "__main__":
+    setup_database()  # Ensure database is set up before any operations
+    
     img_url = input(">>>Drop img here:").strip().strip("'\"")
     print(f"Final image path: {img_url}")
     print(">>>Starting process...")
@@ -305,5 +276,4 @@ if __name__ == "__main__":
     result_data = generate_data(result_sum)
     print(">>>result:")
     print(json.dumps(result_data, indent=2, ensure_ascii=False))
-    setup_database()
     save_to_database(result_data)
