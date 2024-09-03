@@ -212,9 +212,8 @@ def setup_database():
 def save_to_database(data):
     db_file = 'UserData.db'
     
-    # 连接到数据库，并设置 text_factory
     conn = sqlite3.connect(db_file)
-    conn.text_factory = str  # 这将确保文本以 UTF-8 格式存储
+    conn.text_factory = str
     cursor = conn.cursor()
     
     try:
@@ -251,7 +250,7 @@ def save_to_database(data):
             data.get('status'),
             data.get('total_amount'),
             data.get('currency_type'),
-            json.dumps(data.get('NER', []), ensure_ascii=False),  # 确保 NER 也正确编码
+            json.dumps(data.get('NER', []), ensure_ascii=False),
             data.get('additional_info')
         )
         
@@ -260,27 +259,29 @@ def save_to_database(data):
         
         # 处理类型的自完善
         content_type = data.get('type')
-        if content_type:
+        item = data.get('item')
+        if content_type and item:
             # 检查类型是否已存在
             cursor.execute('SELECT supersets, subsets FROM type WHERE supersets = ?', (content_type,))
             existing_type = cursor.fetchone()
             
             if existing_type:
-                # 类型已存在，更新 subsets（如果需要）
-                supersets, subsets = existing_type
-                if data.get('item'):
-                    if not subsets:
-                        new_subsets = data['item']
-                    elif data['item'] not in subsets.split(', '):
-                        new_subsets = f"{subsets}, {data['item']}"
+                # 类型已存在，更新 subsets
+                _, subsets = existing_type
+                if subsets:
+                    subset_list = [s.strip() for s in subsets.split(',')]
+                    if item not in subset_list:
+                        subset_list.append(item)
+                        new_subsets = ', '.join(subset_list)
                     else:
                         new_subsets = subsets  # 无需更新
-                    
-                    if new_subsets != subsets:
-                        cursor.execute('UPDATE type SET subsets = ? WHERE supersets = ?', (new_subsets, content_type))
+                else:
+                    new_subsets = item
+                
+                cursor.execute('UPDATE type SET subsets = ? WHERE supersets = ?', (new_subsets, content_type))
             else:
                 # 新类型，插入它
-                cursor.execute('INSERT INTO type (supersets, subsets) VALUES (?, ?)', (content_type, data.get('item')))
+                cursor.execute('INSERT INTO type (supersets, subsets) VALUES (?, ?)', (content_type, item))
         
         # 提交事务
         conn.commit()
