@@ -19,14 +19,32 @@ client = OpenAI(
     base_url=openai_api_base
 )
 
+def get_types_from_db():
+    db_file = 'UserData.db'
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT supersets, subsets FROM type')
+    types = cursor.fetchall()
+    
+    conn.close()
+    
+    return {supersets: subsets.split(', ') if subsets else [] for supersets, subsets in types}
+
 def encode_image_to_base64(image):
     buffered = io.BytesIO()
     image.save(buffered, format=image.format)
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 def generate_img(img_url):
-    query = generate_img_prompt
+    types = get_types_from_db()
+    type_examples = ', '.join(types.keys())
     
+    query = generate_img_prompt.replace(
+        "ticket, receipt, content",
+        f"{type_examples}. If none of these fit, you may suggest a new type."
+    )
+
     try:
         print(f">>>Processing image: {img_url}")
         image = Image.open(img_url)
@@ -62,7 +80,13 @@ def generate_img(img_url):
         return error_message
 
 def generate_data(result_sum):
-    prompt = generate_data_prompt
+    types = get_types_from_db()
+    type_examples = ', '.join(types.keys())
+    
+    prompt = generate_data_prompt.replace(
+        '"type": Use "ticket" (including flight, train tickets), "receipt", or "content" (for posts, articles, books)',
+        f'"type": Use one of the following types: {type_examples}. If none fit, suggest a new type.'
+    )
 
     try:
         print(">>>Generating structured data from summary...")
@@ -171,10 +195,10 @@ def setup_database():
     )
     ''')
     
-    # 插入 type 表的数据
+    # 插入基础 type 表的数据
     type_data = [
         ('ticket', 'flight ticket, train ticket'),
-        ('receipt', None),
+        ('receipt', 'invoice'),
         ('content', 'post, web article, book')
     ]
     cursor.executemany('INSERT INTO type (supersets, subsets) VALUES (?, ?)', type_data)
@@ -234,9 +258,33 @@ def save_to_database(data):
         # 执行插入操作
         cursor.execute(sql, values)
         
+        # 处理类型的自完善
+        content_type = data.get('type')
+        if content_type:
+            # 检查类型是否已存在
+            cursor.execute('SELECT supersets, subsets FROM type WHERE supersets = ?', (content_type,))
+            existing_type = cursor.fetchone()
+            
+            if existing_type:
+                # 类型已存在，更新 subsets（如果需要）
+                supersets, subsets = existing_type
+                if data.get('item'):
+                    if not subsets:
+                        new_subsets = data['item']
+                    elif data['item'] not in subsets.split(', '):
+                        new_subsets = f"{subsets}, {data['item']}"
+                    else:
+                        new_subsets = subsets  # 无需更新
+                    
+                    if new_subsets != subsets:
+                        cursor.execute('UPDATE type SET subsets = ? WHERE supersets = ?', (new_subsets, content_type))
+            else:
+                # 新类型，插入它
+                cursor.execute('INSERT INTO type (supersets, subsets) VALUES (?, ?)', (content_type, data.get('item')))
+        
         # 提交事务
         conn.commit()
-        print(">>>Data successfully saved to database.")
+        print(">>>Data successfully saved to database and type table updated if necessary.")
     
     except Exception as e:
         print(f">>>Error saving data to database: {str(e)}")
