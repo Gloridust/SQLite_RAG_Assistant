@@ -43,7 +43,10 @@ Given the following database structure and user question, generate an SQL query 
 The query should use fuzzy matching (LIKE operator) and connect multiple conditions with OR where appropriate.
 Always include the 'additional_info' column in the SELECT statement.
 Order the results by date (most recent first) and limit to 5 results.
-Use 'content' as the table name, not 'content_table'.
+Use 'content' as the table name.
+
+Important: For each search condition, include both Chinese and English versions. For example:
+WHERE type LIKE '%文章%' OR type LIKE '%article%' OR item LIKE '%文章%' OR item LIKE '%article%'
 
 Database structure:
 {db_structure}
@@ -56,7 +59,7 @@ Generate only the SQL query without any additional text, explanation, or Markdow
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "You are a SQL query generator. Output only the SQL query without any formatting or explanation."},
+            {"role": "system", "content": "You are a SQL query generator. Output only the SQL query without any formatting or explanation. Include both Chinese and English search terms in the query."},
             {"role": "user", "content": prompt}
         ],
         temperature=0.3,
