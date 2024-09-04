@@ -27,8 +27,11 @@ def get_types_from_db():
         types = cursor.fetchall()
         return {supersets: subsets.split(', ') if subsets else [] for supersets, subsets in types}
     except sqlite3.OperationalError:
-        print("Warning: 'type' table not found. Returning default types.")
-        return {"ticket": [], "receipt": [], "content": []}
+        print("Warning: 'type' table not found. Creating default types.")
+        setup_database()
+        cursor.execute('SELECT supersets, subsets FROM type')
+        types = cursor.fetchall()
+        return {supersets: subsets.split(', ') if subsets else [] for supersets, subsets in types}
     finally:
         conn.close()
 
