@@ -1,10 +1,10 @@
 import sqlite3
 import json
+import re
+from datetime import datetime
 from openai import OpenAI
 from config import openai_api_base, openai_api_key
-from datetime import datetime
 
-# Initialize OpenAI client
 client = OpenAI(
     api_key=openai_api_key,
     base_url=openai_api_base
@@ -21,85 +21,94 @@ def get_db_structure():
 
     # Get content table structure
     cursor.execute("PRAGMA table_info(content)")
-    content_structure = [col[1] for col in cursor.fetchall()]
+    content_structure = [column[1] for column in cursor.fetchall()]
 
     conn.close()
 
-    return json.dumps({"type": type_structure, "content": content_structure})
+    return json.dumps({
+        "type_table": type_structure,
+        "content_table_columns": content_structure
+    })
 
-def generate_sql_query(user_query, db_structure):
+def clean_sql_query(query):
+    # Remove Markdown code block syntax
+    query = re.sub(r'```sql\s*|\s*```', '', query)
+    # Remove any leading/trailing whitespace
+    query = query.strip()
+    return query
+
+def generate_sql_query(user_question, db_structure):
     prompt = f"""
-    Given the following database structure and user query, generate an SQL query to fetch the relevant information.
-    
-    Database Structure:
-    {db_structure}
-    
-    User Query: "{user_query}"
-    
-    Generate an SQL query that:
-    1. Uses the 'content' table
-    2. Incorporates fuzzy matching using LIKE statements
-    3. Uses OR conditions to broaden the search when appropriate
-    4. Always includes a search in the 'additional_info' column
-    5. Orders the results by date (most recent first) if applicable
-    6. Limits the results to 5 entries
+Given the following database structure and user question, generate an SQL query to retrieve relevant information.
+The query should use fuzzy matching (LIKE operator) and connect multiple conditions with OR where appropriate.
+Always include the 'additional_info' column in the SELECT statement.
+Order the results by date (most recent first) and limit to 5 results.
+Use 'content' as the table name, not 'content_table'.
 
-    Return only the SQL query, without any explanation or additional text.
-    """
+Database structure:
+{db_structure}
+
+User question: "{user_question}"
+
+Generate only the SQL query without any additional text, explanation, or Markdown formatting.
+"""
 
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "You are an SQL expert. Generate SQL queries based on natural language requests and database structures."},
+            {"role": "system", "content": "You are a SQL query generator. Output only the SQL query without any formatting or explanation."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.7,
+        temperature=0.3,
         max_tokens=500
+    )
+
+    return clean_sql_query(response.choices[0].message.content.strip())
+
+def execute_query(query):
+    conn = sqlite3.connect('UserData.db')
+    cursor = conn.cursor()
+    cursor.execute(query)
+    results = cursor.fetchall()
+    conn.close()
+    return results
+
+def generate_response(user_question, query_results):
+    results_str = json.dumps(query_results, ensure_ascii=False, indent=2)
+    prompt = f"""
+Based on the user's question and the database query results, generate a concise and informative answer.
+If no relevant information is found, politely inform the user.
+
+User question: "{user_question}"
+
+Query results:
+{results_str}
+
+Provide a natural language response to the user's question based on the query results.
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant providing information based on database query results."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3,
+        max_tokens=300
     )
 
     return response.choices[0].message.content.strip()
 
-def execute_query(sql_query):
-    conn = sqlite3.connect('UserData.db')
-    cursor = conn.cursor()
-    
-    try:
-        cursor.execute(sql_query)
-        results = cursor.fetchall()
-        column_names = [description[0] for description in cursor.description]
-        return [dict(zip(column_names, row)) for row in results]
-    except sqlite3.Error as e:
-        print(f"An error occurred: {e}")
-        return None
-    finally:
-        conn.close()
-
-def format_results(results):
-    if not results:
-        return "No results found."
-
-    formatted_output = ""
-    for item in results:
-        formatted_output += "\n--- Result ---\n"
-        for key, value in item.items():
-            if key == 'added_time':
-                value = datetime.strptime(value, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d %H:%M")
-            formatted_output += f"{key}: {value}\n"
-    
-    return formatted_output
-
 def main():
-    user_query = input("Enter your query: ")
+    user_question = input("请输入你的问题: ")
     db_structure = get_db_structure()
-    sql_query = generate_sql_query(user_query, db_structure)
-    print(f"\nGenerated SQL Query:\n{sql_query}\n")
-    
-    results = execute_query(sql_query)
-    if results:
-        formatted_results = format_results(results)
-        print(formatted_results)
-    else:
-        print("No results found or an error occurred.")
+    sql_query = generate_sql_query(user_question, db_structure)
+    print("Generated SQL query:")
+    print(sql_query)
+    query_results = execute_query(sql_query)
+    response = generate_response(user_question, query_results)
+    print("\n回答：")
+    print(response)
 
 if __name__ == "__main__":
     main()
