@@ -63,7 +63,7 @@ Generate only the SQL query without any additional text, explanation, or Markdow
             {"role": "user", "content": prompt}
         ],
         temperature=0.3,
-        max_tokens=500
+        max_tokens=2048
     )
 
     return clean_sql_query(response.choices[0].message.content.strip())
@@ -88,6 +88,7 @@ Query results:
 {results_str}
 
 Provide a natural language response to the user's question based on the query results.
+根据用户问题选出一个用户需要的数据，并且用最简短的语句阐述出用户需要的那条答案。
 """
 
     response = client.chat.completions.create(
@@ -97,7 +98,7 @@ Provide a natural language response to the user's question based on the query re
             {"role": "user", "content": prompt}
         ],
         temperature=0.3,
-        max_tokens=300
+        max_tokens=2048
     )
 
     return response.choices[0].message.content.strip()
