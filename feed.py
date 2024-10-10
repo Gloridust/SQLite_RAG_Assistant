@@ -248,12 +248,9 @@ def save_to_database(data):
                     if item not in subset_list:
                         subset_list.append(item)
                         new_subsets = ', '.join(subset_list)
-                    else:
-                        new_subsets = subsets
+                        cursor.execute('UPDATE type SET subsets = ? WHERE supersets = ?', (new_subsets, content_type))
                 else:
-                    new_subsets = item
-                
-                cursor.execute('UPDATE type SET subsets = ? WHERE supersets = ?', (new_subsets, content_type))
+                    cursor.execute('UPDATE type SET subsets = ? WHERE supersets = ?', (item, content_type))
             else:
                 cursor.execute('INSERT INTO type (supersets, subsets) VALUES (?, ?)', (content_type, item))
         
